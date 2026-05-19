@@ -322,7 +322,85 @@ E:\works\works_rust\bevy_works\bevy_test04
 cargo run
 ```
 
-## 11. 다음 단계 제안
+## 11. WASM / GitHub Pages 배포 최적화
+
+초기 WASM 배포 파일은 `bevy = "0.18.1"` 기본 feature를 그대로 사용해서 생성했습니다.
+
+그 결과 `docs/bevy_test04/bevy_test04_bg.wasm` 파일 크기가 약 70MB까지 커졌습니다.
+
+이후 다음 최적화를 적용했습니다.
+
+### Bevy feature 최소화
+
+`Cargo.toml`에서 Bevy 기본 feature를 끄고 필요한 기능만 명시했습니다.
+
+사용 목적상 필요한 기능:
+
+- window/winit
+- render/core pipeline
+- sprite
+- ui/text
+- input/focus
+- asset/image/png
+- webgl2
+
+3D, PBR, GLTF, audio, picking 등 현재 퐁 게임에 필요 없는 기능은 제외했습니다.
+
+### release profile 최적화
+
+`Cargo.toml`에 다음 release profile을 추가했습니다.
+
+```toml
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+```
+
+의미:
+
+- `opt-level = "z"`: 실행 속도보다 파일 크기 최적화 우선
+- `lto = true`: 링크 타임 최적화 활성화
+- `codegen-units = 1`: 더 강한 전체 최적화를 위해 codegen 단위 축소
+- `panic = "abort"`: panic unwind 코드 제거
+- `strip = true`: 심볼 제거
+
+### wasm-bindgen 적용
+
+빌드 후 브라우저에서 실행 가능한 JS/WASM 형태로 변환했습니다.
+
+```text
+wasm-bindgen --out-dir ../docs/bevy_test04 --target web target/wasm32-unknown-unknown/release/bevy_test04.wasm
+```
+
+### wasm-opt 적용
+
+`wasm-opt -Oz`로 추가 크기 최적화를 적용했습니다.
+
+사용한 명령:
+
+```text
+npx wasm-opt --enable-bulk-memory --enable-nontrapping-float-to-int -Oz docs/bevy_test04/bevy_test04_bg.wasm -o docs/bevy_test04/bevy_test04_bg.opt.wasm
+```
+
+이후 최적화된 파일을 기존 WASM 파일로 교체했습니다.
+
+### 최적화 결과
+
+대략적인 크기 변화:
+
+```text
+초기 WASM: 약 70MB
+feature 최소화 + release profile 후: 약 14MB
+wasm-opt -Oz 후: 약 12MB
+gzip 예상 전송 크기: 약 4.1MB
+```
+
+GitHub Pages에서는 직접 gzip/brotli 헤더를 세밀하게 제어하기 어렵지만, WASM 자체 크기는 GitHub 권장 한계 아래로 충분히 줄였습니다.
+
+## 12. 다음 단계 제안
 
 다음 단계로 개선할 수 있는 내용:
 
@@ -331,3 +409,4 @@ cargo run
 3. 사운드 효과 추가
 4. 오른쪽에 AI 패드 추가해서 실제 퐁 게임 형태로 확장
 5. 게임 상태를 메뉴/플레이/일시정지로 분리
+6. GitHub Actions로 WASM 빌드와 Pages 배포 자동화
