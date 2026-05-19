@@ -1,0 +1,8 @@
+[package]
+name = "bevy_test04"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = "0.18.1"
+web-sys = { version = "0.3.98", features = ["Window", "Storage"] }
